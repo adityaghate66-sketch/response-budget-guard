@@ -1,13 +1,28 @@
 {
   "name": "response-budget-guard",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Lightweight Node.js API response-size monitoring and budget enforcement toolkit.",
+  "main": "src/index.js",
+  "bin": {
+    "budgetguard": "src/cli/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "test:watch": "node --test --watch test/*.test.js"
+  },
+  "keywords": [
+    "express",
+    "middleware",
+    "performance",
+    "budget",
+    "api",
+    "response-size",
+    "monitoring"
+  ],
+  "author": "adityaghate66-sketch",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
   "type": "commonjs"
 }

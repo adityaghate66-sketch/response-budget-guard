@@ -1,0 +1,10 @@
+node_modules
+.DS_Store
+reports/storage
+*.log
+npm-debug.log*
+.env
+.clover
+coverage
+.vscode
+.idea
