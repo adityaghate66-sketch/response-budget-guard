@@ -6,7 +6,14 @@
  */
 
 const { Command } = require('commander');
-const { generateTableReport, generateJsonReport, loadReport, saveReport } = require('../reports/reporter.js');
+const {
+  generateTableReport,
+  generateJsonReport,
+  generateComparisonReport,
+  loadReport,
+  saveReport,
+  formatBytes
+} = require('../reports/reporter.js');
 
 const program = new Command();
 
@@ -20,8 +27,7 @@ program
   .description('Display response budget report')
   .option('-f, --format <format>', 'Output format (json|table)', 'table')
   .option('-o, --output <path>', 'Output file path for JSON report', './reports/report.json')
-  .action(async (options) => {
-    // Try to load existing report
+  .action((options) => {
     const existingReport = loadReport(options.output);
 
     if (!existingReport) {
@@ -36,11 +42,6 @@ program
       console.log(generateJsonReport(results));
     } else {
       console.log(generateTableReport(results));
-
-      // Offer to save JSON version
-      if (!existingReport) {
-        saveReport(results, { path: options.output });
-      }
     }
   });
 
@@ -64,31 +65,33 @@ program
     const current = currentReport.results || [];
     const previous = previousReport.results || [];
 
-    const comparison = current.map(curr => {
-      const prev = previous.find(p => p.path === curr.path);
-      if (!prev) {
-        return { ...curr, previousSize: 0, sizeChange: 'new', sizeChangePercent: 100 };
-      }
-      const change = ((curr.size - prev.size) / prev.size) * 100;
-      return {
-        path: curr.path,
-        currentSize: curr.size,
-        previousSize: prev.size,
-        sizeChange: change >= 0 ? 'increased' : 'decreased',
-        sizeChangePercent: Math.abs(change).toFixed(2)
-      };
-    });
+    const comparison = generateComparisonReport(current, previous);
 
     if (options.format === 'json') {
-      console.log(JSON.stringify({ comparison }, null, 2));
+      console.log(JSON.stringify(comparison, null, 2));
     } else {
-      console.log('Response Size Comparison:');
-      console.log('  ' + '-'.repeat(60));
-      for (const c of comparison) {
-        const changeStr = c.sizeChange === 'new'
-          ? `+${(c.currentSize / 1024).toFixed(2)} KB (new endpoint)`
-          : `${c.sizeChange} by ${c.sizeChangePercent}% (${(c.previousSize/1024).toFixed(2)} → ${(c.currentSize/1024).toFixed(2)} KB)`;
-        console.log(`  ${c.path.padEnd(30)} | ${changeStr}`);
+      console.log('Response Size Comparison');
+      console.log('  ' + '-'.repeat(70));
+
+      const summary = comparison.summary;
+      console.log(`  Endpoints: ${summary.totalEndpoints} | New: ${summary.newEndpoints} | Increased: ${summary.increased} | Decreased: ${summary.decreased}`);
+      console.log('  ' + '-'.repeat(70));
+
+      for (const c of comparison.comparison) {
+        let line = '';
+
+        if (c.sizeChange === 'new') {
+          line = `NEW  | ${c.path}`;
+        } else {
+          const arrow = c.sizeChange === 'increased' ? '↗' : '↘';
+          line = `${arrow} ${c.sizeChangePercent}% | ${c.path}`;
+        }
+
+        const currentKb = (c.currentSize / 1024).toFixed(2);
+        const prevKb = c.previousSize > 0 ? (c.previousSize / 1024).toFixed(2) : '-';
+        const budgetStatus = c.exceeded ? '❌' : '✅';
+
+        console.log(`  ${line.padEnd(40)} | ${prevKb.padStart(8)} → ${currentKb.padEnd(8)} KB ${budgetStatus}`);
       }
     }
   });
@@ -97,6 +100,7 @@ program
   .command('check')
   .description('Check budgets and exit with error code if exceeded')
   .option('-f, --file <path>', 'Path to report file', './reports/report.json')
+  .option('-t, --threshold <percent>', 'Warning threshold percentage', '80')
   .action((options) => {
     const report = loadReport(options.file);
 
@@ -107,18 +111,28 @@ program
 
     const results = report.results || [];
     const exceeded = results.filter(r => r.exceeded);
+    const warnings = results.filter(r => !r.exceeded && r.utilization >= parseFloat(options.threshold));
 
-    if (exceeded.length === 0) {
+    if (exceeded.length === 0 && warnings.length === 0) {
       console.log('All response budgets passed ✅');
       process.exit(0);
     }
 
-    console.error('Some response budgets exceeded ❌');
-    for (const r of exceeded) {
-      console.error(`  ${r.path}: ${r.utilization}% of budget`);
+    if (warnings.length > 0) {
+      console.log('⚠️  Warnings (approaching budget):');
+      for (const w of warnings) {
+        console.log(`  ${w.path}: ${w.utilization}% of budget`);
+      }
     }
 
-    process.exit(1);
+    if (exceeded.length > 0) {
+      console.error('\n❌ Budget violations:');
+      for (const r of exceeded) {
+        console.error(`  ${r.path}: ${r.utilization}% of budget`);
+      }
+
+      process.exit(1);
+    }
   });
 
 program.parse();

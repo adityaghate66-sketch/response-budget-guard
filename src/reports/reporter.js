@@ -233,10 +233,63 @@ function loadReport(filePath) {
   }
 }
 
+/**
+ * Generates a comparison report between historical and current results.
+ * @param {Array<Object>} current - Current budget check results
+ * @param {Array<Object>} historical - Historical budget check results
+ * @returns {Object} Comparison summary
+ */
+function generateComparisonReport(current, historical) {
+  const comparison = [];
+
+  for (const curr of current) {
+    const hist = historical.find(h => h.path === curr.path);
+
+    if (!hist) {
+      // New endpoint
+      comparison.push({
+        path: curr.path,
+        currentSize: curr.size,
+        previousSize: 0,
+        sizeChange: 'new',
+        sizeChangePercent: 100,
+        status: 'new_endpoint'
+      });
+    } else {
+      const change = ((curr.size - hist.size) / hist.size) * 100;
+      const trend = change > 0 ? 'increased' : change < 0 ? 'decreased' : 'unchanged';
+
+      comparison.push({
+        path: curr.path,
+        currentSize: curr.size,
+        previousSize: hist.size,
+        sizeChange: trend,
+        sizeChangePercent: Math.abs(change).toFixed(2),
+        exceeded: curr.exceeded,
+        previousExceeded: hist.exceeded,
+        status: curr.exceeded ? 'exceeded' : hist.exceeded ? 'recovered' : 'stable'
+      });
+    }
+  }
+
+  return {
+    comparison,
+    summary: {
+      totalEndpoints: current.length,
+      newEndpoints: comparison.filter(c => c.sizeChange === 'new').length,
+      increased: comparison.filter(c => c.sizeChange === 'increased' && c.sizeChangePercent > 5).length,
+      decreased: comparison.filter(c => c.sizeChange === 'decreased').length,
+      currentlyExceeded: comparison.filter(c => c.exceeded).length,
+      previouslyExceeded: comparison.filter(c => c.previousExceeded).length
+    }
+  };
+}
+
 module.exports = {
   Reporter,
   generateTableReport,
   generateJsonReport,
+  generateComparisonReport,
   saveReport,
   loadReport,
   formatBytes

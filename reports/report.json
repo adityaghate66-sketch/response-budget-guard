@@ -1,0 +1,11 @@
+{
+  "total": 3,
+  "passed": 2,
+  "failed": 1,
+  "results": [
+    { "path": "/api/users", "size": 42000, "limit": 100000, "exceeded": false, "utilization": 42 },
+    { "path": "/api/products", "size": 65000, "limit": 50000, "exceeded": true, "utilization": 130 },
+    { "path": "/api/orders", "size": 12000, "limit": 50000, "exceeded": false, "utilization": 24 }
+  ],
+  "generatedAt": "2026-11-13T10:00:00.000Z"
+}
