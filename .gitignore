@@ -1,6 +1,8 @@
 node_modules
 .DS_Store
 reports/storage
+reports/*.json
+test-reports/
 *.log
 npm-debug.log*
 .env

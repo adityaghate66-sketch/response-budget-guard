@@ -8,7 +8,9 @@
   },
   "scripts": {
     "test": "node --test test/*.test.js",
-    "test:watch": "node --test --watch test/*.test.js"
+    "test:watch": "node --test --watch test/*.test.js",
+    "start": "node src/cli/index.js",
+    "example": "node examples/app.js"
   },
   "keywords": [
     "express",

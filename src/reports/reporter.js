@@ -177,15 +177,32 @@ class Reporter {
   }
 
   /**
+   * Recursively clears a directory.
+   * @param {string} dirPath - Directory to clear
+   */
+  clearDirectory(dirPath) {
+    if (!fs.existsSync(dirPath)) return;
+
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+
+      if (entry.isDirectory()) {
+        this.clearDirectory(fullPath);
+        fs.rmdirSync(fullPath);
+      } else {
+        fs.unlinkSync(fullPath);
+      }
+    }
+  }
+
+  /**
    * Clears all reports.
    */
   clear() {
     this.reports = [];
-    // Clear storage directory
-    const files = fs.readdirSync(this.storagePath);
-    for (const file of files) {
-      fs.unlinkSync(path.join(this.storagePath, file));
-    }
+    this.clearDirectory(this.storagePath);
   }
 }
 
